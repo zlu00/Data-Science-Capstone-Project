@@ -1,0 +1,133 @@
+---
+title: "Data Science Capstone: Milestone Report"
+author: "Eric Lu"
+date: "5/1/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+This report provides a summary of data preprocessing and exploratory data analysis of the data sets provided by SwiftKey. Plans for creating the prediction model and the Shiny app will also be discussed in the last part of this report.  
+
+
+## Getting and Cleaning Data
+We first download data and load required libraries.
+```{r, message=FALSE, warning=FALSE}
+library(stringi)
+library(tm)
+library(rJava)
+library(RWeka)
+library(ggplot2)
+library(wordcloud)
+
+setwd("~/Documents/Coursera/Coursera - Data Science/Data Science Capstone")
+downloadURL <- "http://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if(!file.exists("./final/en_US/en_US.news.txt")|| !file.exists("./final/en_US/en_US.blogs.txt")|| !file.exists("./final/en_US/en_US.twitter.txt")){  
+    if(!file.exists("Coursera-SwiftKey.zip")){    
+        download.file(url=downloadURL, destfile="Coursera-SwiftKey.zip")
+    }
+    unzip(zipfile="Coursera-SwiftKey.zip")
+}
+```
+
+Then we load the data.
+```{r}
+blog <- readLines("./final/en_US/en_US.blogs.txt", skipNul=TRUE, encoding="UTF-8")
+news <- readLines("./final/en_US/en_US.news.txt", skipNul=TRUE, encoding="UTF-8")
+twit <- readLines("./final/en_US/en_US.twitter.txt", skipNul=TRUE, encoding="UTF-8")
+```
+
+We would like to know the number of lines and number of words of each file.   
+```{r}
+fileNames <- c("en_US.blogs.txt", "en_US.news.txt", "en_US.twitter.txt")
+fileSizeMB <- c(file.info("./final/en_US/en_US.blogs.txt")$size/1024^2, file.info("./final/en_US/en_US.news.txt")$size/1024^2, file.info("./final/en_US/en_US.twitter.txt")$size/1024^2)
+fileLines <- c(length(blog), length(news), length(twit))
+fileWords <- c(sum(stri_count_words(blog)), sum(stri_count_words(news)), sum(stri_count_words(twit)))
+data.frame(fileNames, fileSizeMB, fileLines, fileWords)
+```
+
+Since the original data is very large, we want to have a sample of 800 lines from each file to perform the analysis.
+```{r}
+set.seed(998)
+blogTraining <- sample(blog, size=800, replace=FALSE)
+newsTraining <- sample(news, size=800, replace=FALSE)
+twitTraining <- sample(twit, size=800, replace=FALSE)
+rm(blog, news, twit)
+```
+
+Next, we want to create a merged corpus and clean up the data by removing punctuation and numbers.
+```{r, message=FALSE, warning=FALSE}
+mergedTraining <- paste(blogTraining, newsTraining, twitTraining)
+mergedCorpus <- VCorpus(VectorSource(mergedTraining))
+mergedCorpus <- tm_map(mergedCorpus, tolower)
+mergedCorpus <- tm_map(mergedCorpus, removeNumbers)
+mergedCorpus <- tm_map(mergedCorpus, removePunctuation)
+mergedCorpus <- tm_map(mergedCorpus, stripWhitespace)
+mergedCorpus <- tm_map(mergedCorpus, stemDocument)
+rm(blogTraining, newsTraining, twitTraining)
+```
+
+## Exploratory Data Analysis  
+We want to find out the top words (unigrams) by frequency.  
+```{r, message=FALSE, warning=FALSE}
+unigramTokenizer <- NGramTokenizer(mergedCorpus, Weka_control(min = 1, max = 1))
+unigramOutput <- data.frame(table(unigramTokenizer))
+unigramOutput <- unigramOutput[order(unigramOutput$Freq, decreasing = TRUE), ]
+
+wordcloud(unigramOutput$unigramTokenizer, unigramOutput$Freq, max.words=100, scale=c(5,1), random.order = FALSE, rot.per = 0.35, use.r.layout = FALSE, colors=brewer.pal(6, "Dark2"))
+
+unigramPlot <- ggplot(unigramOutput[1:20,], aes(x=reorder(unigramTokenizer, Freq), y=Freq))
+unigramPlot <- unigramPlot + geom_bar(stat = "identity")
+unigramPlot <- unigramPlot + coord_flip()
+unigramPlot <- unigramPlot + theme(legend.title=element_blank())
+unigramPlot <- unigramPlot + labs(x = "Unigrams", y = "Frequency")
+unigramPlot <- unigramPlot + ggtitle("Top 20 Unigrams by Frequency")
+unigramPlot
+```
+
+
+Next, we want to find out the top bigrams (2-grams) by frequency.  
+```{r, message=FALSE, warning=FALSE}
+bigramTokenizer <- NGramTokenizer(mergedCorpus, Weka_control(min = 2, max = 2, delimiters = " \\r\\n\\t.,;:\"()?!"))
+bigramOutput <- data.frame(table(bigramTokenizer))
+bigramOutput <- bigramOutput[order(bigramOutput$Freq, decreasing = TRUE), ]
+
+wordcloud(bigramOutput$bigramTokenizer, bigramOutput$Freq, max.words=100, scale=c(5,1), random.order = FALSE, rot.per = 0.35, use.r.layout = FALSE, colors=brewer.pal(6, "Dark2"))
+
+bigramPlot <- ggplot(bigramOutput[1:20,], aes(x=reorder(bigramTokenizer, Freq), y=Freq))
+bigramPlot <- bigramPlot + geom_bar(stat = "identity")
+bigramPlot <- bigramPlot + coord_flip()
+bigramPlot <- bigramPlot + theme(legend.title=element_blank())
+bigramPlot <- bigramPlot + labs(x = "Bigrams", y = "Frequency")
+bigramPlot <- bigramPlot + ggtitle("Top 20 Bigrams by Frequency")
+bigramPlot
+```
+
+And also the top trigrams (3-grams). 
+```{r, message=FALSE, warning=FALSE}
+trigramTokenizer <- NGramTokenizer(mergedCorpus, Weka_control(min = 3, max = 3, delimiters = " \\r\\n\\t.,;:\"()?!"))
+trigramOutput <- data.frame(table(trigramTokenizer))
+trigramOutput <- trigramOutput[order(trigramOutput$Freq, decreasing = TRUE), ]
+
+wordcloud(trigramOutput$trigramTokenizer, trigramOutput$Freq, max.words=100, scale=c(5,1), random.order = FALSE, rot.per = 0.35, use.r.layout = FALSE, colors=brewer.pal(6, "Dark2"))
+
+trigramPlot <- ggplot(trigramOutput[1:20,], aes(x=reorder(trigramTokenizer, Freq), y=Freq))
+trigramPlot <- trigramPlot + geom_bar(stat = "identity")
+trigramPlot <- trigramPlot + coord_flip()
+trigramPlot <- trigramPlot + theme(legend.title=element_blank())
+trigramPlot <- trigramPlot + labs(x = "Trigrams", y = "Frequency")
+trigramPlot <- trigramPlot + ggtitle("Top 20 Trigrams by Frequency")
+trigramPlot
+```
+
+
+## Next Steps
+1. We may need more time and computation resources to further process the data.
+2. It is possible to use the N-gram dataframe to predict the probability of the next word that may occur.
+3. Eventually the final model will be demonstreted by a shiny app.
+
+
+

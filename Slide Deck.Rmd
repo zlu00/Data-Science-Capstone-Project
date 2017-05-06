@@ -1,0 +1,49 @@
+---
+title: "Coursera Data Science Capstone Project"
+author: "Eric Lu"
+date: "5/1/2017"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## The Objective
+
+![](header.png)
+
+The goal of this capstone is to mimic the experience of being a data scientist. As a practicing data scientist it is entirely common to get a messy data set, a vague question, and very little instruction on exactly how to analyze the data.
+
+The base dataset is provided by SwiftKey, and the objective of this project is to build a shiny application to predict the next word after input of a phrase with multiple words.  
+
+## Data Process and Analysis
+
+- A subset of the original data was sampled from the three different sources (blogs, twitter and news), which was then merged into one.  
+- Next, data was processed and cleaned up by converting to lowercase, removing punctuation, numbers and white spaces. 
+- Then the corresponding unigram, bigram, trigram and quadgram were created and sorted in descending order.  
+- Lastly, the strings stored in the n-grams objects were splited, and all the processed data was saved as RData files.
+
+## Shinny App
+
+- Processed data was first loaded.
+- Next, user input was cleaned up in the same way as the base dataset was cleaned.  
+- A simplified Katz's back-off model was performed.  
+- For prediction of the next word, quadgram model - trigram model - bigram model - unigram model were used and searched in this order.  
+- Lastly, prediction model selection and its result were returned to the screen.
+
+
+## Additional Information
+
+- The Shinny App:   
+https://zlu00.shinyapps.io/Capstone_Project/
+
+- This presentation:   
+https://rpubs.com/zlu00/SlideDeck
+
+- Github Repo:   
+https://github.com/zlu00/Data-Science-Capstone-Project
+
+- Coursera Specialization and Course infromation:  
+https://www.coursera.org/learn/data-science-project/home/welcome
